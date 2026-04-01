@@ -3,8 +3,10 @@ import { useFonts } from 'expo-font';
 import { SplashScreen, Stack } from "expo-router";
 import { useEffect } from 'react';
 
+SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
-  const [ fonstsLoaded ] = useFonts({
+  const [ fontsLoaded ] = useFonts({
     "sans-regular": require('../assets/fonts/PlusJakartaSans-Regular.ttf'),
     "sans-medium": require('../assets/fonts/PlusJakartaSans-Medium.ttf'),
     "sans-semibold": require('../assets/fonts/PlusJakartaSans-SemiBold.ttf'),
@@ -14,12 +16,12 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fonstsLoaded) {
+    if (fontsLoaded) {
       SplashScreen.hideAsync();
     }
-  }, [fonstsLoaded]);
+  }, [fontsLoaded]);
 
-  if (!fonstsLoaded) return null;
+  if (!fontsLoaded) return null;
 
   return <Stack screenOptions={{headerShown: false}}/>;
 }
