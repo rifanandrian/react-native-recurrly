@@ -50,7 +50,14 @@ const SignIn = () => {
 
   const applyError = (error: unknown, fallback: string) => {
     const parsed = parseClerkError(error, fallback);
-    setFieldErrors((current) => ({ ...current, ...parsed.fieldErrors }));
+    const remappedFieldErrors = { ...parsed.fieldErrors };
+
+    if (remappedFieldErrors.password) {
+      remappedFieldErrors.newPassword = remappedFieldErrors.password;
+      delete remappedFieldErrors.password;
+    }
+
+    setFieldErrors((current) => ({ ...current, ...remappedFieldErrors }));
     setFormError(parsed.formError);
   };
 
@@ -205,7 +212,17 @@ const SignIn = () => {
       if (attempt.status === 'complete') {
         await finishSignIn(attempt.createdSessionId);
       } else if (attempt.status === 'needs_second_factor') {
-        await moveToSecondFactor(`Your password was updated. We sent a 6-digit code to ${normalizedEmail}.`);
+        try {
+          await moveToSecondFactor(`Your password was updated. We sent a 6-digit code to ${normalizedEmail}.`);
+        } catch {
+          setStage('password');
+          setCode('');
+          setNewPassword('');
+          setConfirmNewPassword('');
+          setNotice(
+            `Your password was updated for ${normalizedEmail}, but we could not prepare the next verification step. Sign in again to complete verification.`,
+          );
+        }
       } else {
         setFormError('Password updated, but sign-in still needs another step.');
       }
@@ -400,7 +417,16 @@ const SignIn = () => {
                     >
                       <Text style={styles.buttonText}>{isSubmitting ? 'Sending code...' : 'Send reset code'}</Text>
                     </Pressable>
-                    <Pressable onPress={() => setStage('password')}>
+                    <Pressable
+                      disabled={isSubmitting}
+                      onPress={() => {
+                        if (isSubmitting) {
+                          return;
+                        }
+
+                        setStage('password');
+                      }}
+                    >
                       <Text style={styles.linkText}>Back to sign in</Text>
                     </Pressable>
                   </>
@@ -422,7 +448,16 @@ const SignIn = () => {
                 )}
 
                 {stage === 'password' ? (
-                  <Pressable onPress={() => setStage('reset-request')}>
+                  <Pressable
+                    disabled={isSubmitting}
+                    onPress={() => {
+                      if (isSubmitting) {
+                        return;
+                      }
+
+                      setStage('reset-request');
+                    }}
+                  >
                     <Text style={styles.linkText}>Forgot password?</Text>
                   </Pressable>
                 ) : null}
