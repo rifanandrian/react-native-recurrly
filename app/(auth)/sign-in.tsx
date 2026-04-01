@@ -64,10 +64,26 @@ const SignIn = () => {
     router.replace('/(tabs)');
   };
 
+  const moveToSecondFactor = async (message: string) => {
+    if (!signIn) {
+      setFormError('We could not finish signing you in.');
+      return;
+    }
+
+    await signIn.prepareSecondFactor({ strategy: 'email_code' });
+    setCode('');
+    setStage('mfa');
+    setNotice(message);
+  };
+
   const handlePasswordSignIn = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = {
       email: validateEmailAddress(email),
-      password: validatePassword(password),
+      password: password.trim() ? '' : 'Enter your password.',
     };
 
     setFieldErrors(nextErrors);
@@ -87,9 +103,7 @@ const SignIn = () => {
       if (attempt.status === 'complete') {
         await finishSignIn(attempt.createdSessionId);
       } else if (attempt.status === 'needs_second_factor') {
-        await signIn.prepareSecondFactor({ strategy: 'email_code' });
-        setStage('mfa');
-        setNotice(`We sent a 6-digit code to ${normalizedEmail}.`);
+        await moveToSecondFactor(`We sent a 6-digit code to ${normalizedEmail}.`);
       } else {
         setFormError('We need one more verification step to finish signing you in.');
       }
@@ -101,6 +115,10 @@ const SignIn = () => {
   };
 
   const handleVerifySecondFactor = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = { code: validateVerificationCode(code) };
     setFieldErrors(nextErrors);
     if (!isLoaded || nextErrors.code) {
@@ -129,6 +147,10 @@ const SignIn = () => {
   };
 
   const handleStartReset = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = { email: validateEmailAddress(email) };
     setFieldErrors(nextErrors);
     if (!isLoaded || nextErrors.email) {
@@ -156,6 +178,10 @@ const SignIn = () => {
   };
 
   const handleCompleteReset = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = {
       code: validateVerificationCode(code),
       newPassword: validatePassword(newPassword),
@@ -178,6 +204,8 @@ const SignIn = () => {
 
       if (attempt.status === 'complete') {
         await finishSignIn(attempt.createdSessionId);
+      } else if (attempt.status === 'needs_second_factor') {
+        await moveToSecondFactor(`Your password was updated. We sent a 6-digit code to ${normalizedEmail}.`);
       } else {
         setFormError('Password updated, but sign-in still needs another step.');
       }
@@ -189,7 +217,7 @@ const SignIn = () => {
   };
 
   const handleResendCode = async () => {
-    if (!isLoaded) {
+    if (isSubmitting || !isLoaded) {
       return;
     }
 
@@ -339,17 +367,25 @@ const SignIn = () => {
                 {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
                 {stage === 'password' && (
-                  <Pressable onPress={handlePasswordSignIn} style={[styles.button, (!email || !password || isSubmitting) && styles.buttonDisabled]}>
+                  <Pressable
+                    disabled={!email || !password || isSubmitting}
+                    onPress={handlePasswordSignIn}
+                    style={[styles.button, (!email || !password || isSubmitting) && styles.buttonDisabled]}
+                  >
                     <Text style={styles.buttonText}>{isSubmitting ? 'Signing in...' : 'Sign in'}</Text>
                   </Pressable>
                 )}
 
                 {stage === 'mfa' && (
                   <>
-                    <Pressable onPress={handleVerifySecondFactor} style={[styles.button, (!code || isSubmitting) && styles.buttonDisabled]}>
+                    <Pressable
+                      disabled={!code || isSubmitting}
+                      onPress={handleVerifySecondFactor}
+                      style={[styles.button, (!code || isSubmitting) && styles.buttonDisabled]}
+                    >
                       <Text style={styles.buttonText}>{isSubmitting ? 'Verifying...' : 'Verify sign in'}</Text>
                     </Pressable>
-                    <Pressable onPress={handleResendCode}>
+                    <Pressable disabled={isSubmitting} onPress={handleResendCode}>
                       <Text style={styles.linkText}>Resend code</Text>
                     </Pressable>
                   </>
@@ -357,7 +393,11 @@ const SignIn = () => {
 
                 {stage === 'reset-request' && (
                   <>
-                    <Pressable onPress={handleStartReset} style={[styles.button, (!email || isSubmitting) && styles.buttonDisabled]}>
+                    <Pressable
+                      disabled={!email || isSubmitting}
+                      onPress={handleStartReset}
+                      style={[styles.button, (!email || isSubmitting) && styles.buttonDisabled]}
+                    >
                       <Text style={styles.buttonText}>{isSubmitting ? 'Sending code...' : 'Send reset code'}</Text>
                     </Pressable>
                     <Pressable onPress={() => setStage('password')}>
@@ -369,12 +409,13 @@ const SignIn = () => {
                 {stage === 'reset-verify' && (
                   <>
                     <Pressable
+                      disabled={!code || !newPassword || !confirmNewPassword || isSubmitting}
                       onPress={handleCompleteReset}
                       style={[styles.button, (!code || !newPassword || !confirmNewPassword || isSubmitting) && styles.buttonDisabled]}
                     >
                       <Text style={styles.buttonText}>{isSubmitting ? 'Updating password...' : 'Update password'}</Text>
                     </Pressable>
-                    <Pressable onPress={handleResendCode}>
+                    <Pressable disabled={isSubmitting} onPress={handleResendCode}>
                       <Text style={styles.linkText}>Resend reset code</Text>
                     </Pressable>
                   </>

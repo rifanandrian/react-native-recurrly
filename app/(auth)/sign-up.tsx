@@ -64,6 +64,10 @@ const SignUp = () => {
   };
 
   const handleCreateAccount = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = {
       email: validateEmailAddress(email),
       password: validatePassword(password),
@@ -79,18 +83,29 @@ const SignUp = () => {
 
     try {
       await signUp.create({ emailAddress: normalizedEmail, password });
-      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
       setPendingVerification(true);
       setCode('');
       setNotice(`We sent a 6-digit verification code to ${normalizedEmail}.`);
     } catch (error) {
       applyError(error, 'Unable to create your account right now.');
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+    } catch (error) {
+      applyError(error, 'We created your account, but could not send the verification code yet.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handleVerifyEmail = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
     const nextErrors = { code: validateVerificationCode(code) };
     setFieldErrors(nextErrors);
     if (!isLoaded || nextErrors.code) {
@@ -115,7 +130,7 @@ const SignUp = () => {
   };
 
   const handleResendCode = async () => {
-    if (!isLoaded) {
+    if (isSubmitting || !isLoaded) {
       return;
     }
 
@@ -233,6 +248,11 @@ const SignUp = () => {
                 {formError ? <Text style={styles.error}>{formError}</Text> : null}
 
                 <Pressable
+                  disabled={
+                    pendingVerification
+                      ? !code || isSubmitting
+                      : !email || !password || !confirmPassword || isSubmitting
+                  }
                   onPress={pendingVerification ? handleVerifyEmail : handleCreateAccount}
                   style={[
                     styles.button,
@@ -255,7 +275,7 @@ const SignUp = () => {
                 </Pressable>
 
                 {pendingVerification ? (
-                  <Pressable onPress={handleResendCode}>
+                  <Pressable disabled={isSubmitting} onPress={handleResendCode}>
                     <Text style={styles.linkText}>Resend code</Text>
                   </Pressable>
                 ) : null}
