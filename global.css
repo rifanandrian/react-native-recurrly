@@ -127,7 +127,7 @@
     }
 
     .upcoming-icon {
-        @apply size-14;
+        @apply size-10;
     }
 
     .upcoming-price {
@@ -159,7 +159,7 @@
     }
 
     .sub-icon {
-        @apply size-16 rounded-lg;
+        @apply size-12 rounded-lg;
     }
 
     .sub-copy {
